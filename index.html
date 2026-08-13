@@ -133,7 +133,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;bor
 <p>नाव / Name: <b id="combinedPreviewName"></b></p><p>रक्कम / Amount: <b id="combinedPreviewAmount"></b></p>
 <p>उद्देश / Purpose: <b>वर्गणी / देणगी</b></p><p>Payment / पेमेंट: <b id="combinedPreviewMethod"></b></p>
 <p id="combinedPreviewTxnRow" style="display:none">Transaction ID / व्यवहार क्रमांक: <b id="combinedPreviewTxn"></b></p><p>तारीख / Date: <b id="combinedPreviewDate"></b></p>
-<div id="receiptQr" style="margin:14px auto;display:none;text-align:center"><div id="qrCanvas" style="display:inline-block"></div><div class="muted" style="margin-top:6px">QR Scan करून हीच पावती Download करा</div></div><br><p>अधिकृत स्वाक्षरी / Authorized Signature</p>
+<div id="receiptQr" style="margin:14px auto;display:none;text-align:center"><div id="qrCanvas" style="display:inline-block"></div><div class="muted" style="margin-top:6px">QR Scan करून हीच पावती Online उघडा व Print / Download करा</div></div><br><p>अधिकृत स्वाक्षरी / Authorized Signature</p>
 <div class="actions"><button class="primary" type="button" onclick="printCombinedReceipt()">🧾 पावती Generate / Print-PDF</button><button class="primary" type="button" onclick="uploadCurrentReceipt()">☁️ Upload पावती</button><button class="primary" type="button" onclick="shareCombinedReceipt()">📤 Share पावती</button><small class="muted">पावती Upload / Share करण्यासाठी Admin Login आवश्यक आहे.</small></div>
 </div></div></div>
 <div class="panel"><h3>📋 वर्गणी नोंदी</h3><p class="muted">ही यादी Public ला पाहता येईल. नवीन नोंद करण्यासाठी Admin Login आवश्यक आहे.</p><table><thead><tr><th>नाव / Name</th><th>रक्कम / Amount</th><th>Payment</th><th>तारीख / Date</th><th>पावती क्र.</th><th class="admin-col">Action</th></tr></thead><tbody id="donationRows"></tbody></table></div>
@@ -193,6 +193,7 @@ table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:10px;bor
 <!-- Supabase JS client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 const SUPABASE_URL = 'https://apgkhihnbdqsftzbwqqx.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_ec4ed-Z0EvZp1erE_mZxUA_1TbNuaee';
@@ -220,6 +221,28 @@ async function supa(op, label='Supabase'){
     console.error(label, err);
     alert(label + ' error: ' + (err.message || err));
     throw err;
+  }
+}
+
+async function openPublicReceiptIfRequested(){
+  const id=new URLSearchParams(window.location.search).get('receipt');
+  if(!id) return false;
+  try{
+    const {data:rec,error}=await sb.from('donations').select('*').eq('id',id).single();
+    if(error) throw error;
+    if(!rec) throw new Error('Receipt not found');
+    const esc=escapeHtml;
+    const method=rec.method==='Cash'?'💵 Cash / रोख':'📱 Online / ऑनलाइन';
+    const txn=rec.txn_id?`<p>Transaction ID: <b>${esc(rec.txn_id)}</b></p>`:'';
+    const no=String(rec.receipt_no||'').padStart(4,'0');
+    const viewerUrl=publicReceiptViewerUrl(id);
+    const logo=document.querySelector('.receipt-logo')?.src||'';
+    document.body.innerHTML=`<main style="min-height:100vh;background:#fff8ed;padding:24px;font-family:Arial,sans-serif"><div style="max-width:680px;margin:auto;border:3px solid #b45309;border-radius:18px;padding:28px;background:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)"><img src="${logo}" style="width:150px;height:150px;object-fit:contain;border-radius:50%"><h1>श्री युवा गणेश उत्सव मंडळ</h1><h2>पावती / RECEIPT</h2><p>पावती क्र. / Receipt No.: <b>${esc(no)}</b></p><hr><p>नाव / Name: <b>${esc(rec.name)}</b></p><p>रक्कम / Amount: <b>${money(rec.amount)}</b></p><p>Payment / पेमेंट: <b>${method}</b></p>${txn}<p>तारीख / Date: <b>${esc(rec.donation_date||'')}</b></p><div style="margin:18px auto;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(viewerUrl)}" width="180" height="180" alt="Receipt QR Code"><div>QR Scan करून हीच पावती Online उघडा</div></div><p>अधिकृत स्वाक्षरी / Authorized Signature</p><p>धन्यवाद 🙏</p><button onclick="window.print()" style="padding:10px 18px;border:0;border-radius:8px;background:#b45309;color:#fff;cursor:pointer">🧾 Print / Save PDF</button></div></main>`;
+    document.title=`पावती ${no} - श्री युवा गणेश उत्सव मंडळ`;
+    return true;
+  }catch(e){
+    document.body.innerHTML=`<main style="font-family:Arial,sans-serif;padding:40px;text-align:center"><h2>पावती सापडली नाही</h2><p>${escapeHtml(e.message||e)}</p></main>`;
+    return true;
   }
 }
 
@@ -385,9 +408,13 @@ function editDonation(id){
 
 function printCombinedReceipt(){if(!currentReceipt?.receiptFilePath)return alert('आधी ☁️ Upload पावती करा. QR Code सहित original पावती मग Print करा.');const old=document.title;document.title='श्री युवा गणेश उत्सव मंडळ - पावती';window.print();setTimeout(()=>document.title=old,500);}
 function receiptText(){return `श्री युवा गणेश उत्सव मंडळ - पावती\nनाव: ${combinedPreviewName.textContent}\nरक्कम: ${combinedPreviewAmount.textContent}\nPayment: ${combinedPreviewMethod.textContent}\nपावती क्र.: ${combinedReceiptNo.textContent}\nतारीख: ${combinedPreviewDate.textContent}`;}
+function publicReceiptViewerUrl(id){
+  const base=window.location.origin + window.location.pathname;
+  return base + '?receipt=' + encodeURIComponent(id);
+}
 function receiptHtml(publicUrl){
   const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
-  const qr=publicUrl?`<div style="margin:16px auto;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}" width="180" height="180" alt="Receipt QR Code"><div>QR Scan करून हीच पावती Download करा</div></div>`:'';
+  const qr=publicUrl?`<div style="margin:16px auto;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}" width="180" height="180" alt="Receipt QR Code"><div>QR Scan करून हीच पावती Online उघडा व Print / Download करा</div></div>`:'';
   return `<!doctype html><html lang="mr"><meta charset="utf-8"><title>पावती ${esc(combinedReceiptNo.textContent)}</title><body style="font-family:Arial,sans-serif;background:#fff8ed;padding:24px"><div style="max-width:680px;margin:auto;border:3px solid #b45309;border-radius:18px;padding:28px;background:white;text-align:center"><img src="${document.querySelector('.receipt-logo').src}" style="width:150px;height:150px;object-fit:contain;border-radius:50%"><h1>श्री युवा गणेश उत्सव मंडळ</h1><h2>पावती / RECEIPT</h2><p>पावती क्र.: <b>${esc(combinedReceiptNo.textContent)}</b></p><hr><p>नाव: <b>${esc(combinedPreviewName.textContent)}</b></p><p>रक्कम: <b>${esc(combinedPreviewAmount.textContent)}</b></p><p>Payment: <b>${esc(combinedPreviewMethod.textContent)}</b></p>${combinedPreviewTxnRow.style.display!=='none'?`<p>Transaction ID: <b>${esc(combinedPreviewTxn.textContent)}</b></p>`:''}<p>तारीख: <b>${esc(combinedPreviewDate.textContent)}</b></p>${qr}<p>अधिकृत स्वाक्षरी / Authorized Signature</p><p>धन्यवाद 🙏</p></div></body></html>`;
 }
 const MEDIA_BUCKET='expense-bills';
@@ -395,25 +422,38 @@ function publicReceiptUrl(path){return SUPABASE_URL+'/storage/v1/object/public/'
 function showReceiptQr(url){
   const box=document.getElementById('receiptQr'), canvas=document.getElementById('qrCanvas');
   if(!box||!canvas||!window.QRCode||!url) return;
-  canvas.innerHTML=''; new QRCode(canvas,{text:url,width:180,height:180}); box.style.display='block';
+  canvas.innerHTML='';
+  new QRCode(canvas,{text:url,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});
+  box.style.display='block';
 }
+
 async function uploadCurrentReceipt(){
   if(!currentReceipt) return alert('आधी actual वर्गणी save करून पावती तयार करा.');
   if(!requireAdmin('🧾 पावती Upload')) return false;
   const no=String(combinedReceiptNo.textContent).padStart(4,'0');
   const rid=currentReceipt.id||crypto.randomUUID();
   const path=`receipts/${new Date().getFullYear()}/receipt-${no}-${rid}.html`;
+  // QR must point to the actual uploaded receipt file, not the local/file:// page.
+  // This makes the QR independent of the browser/device that created the receipt.
   const url=publicReceiptUrl(path);
-  const blob=new Blob([receiptHtml(url)],{type:'text/html;charset=utf-8'});
+  const viewerUrl=publicReceiptViewerUrl(rid);
+  const blob=new Blob([receiptHtml(viewerUrl)],{type:'text/html;charset=utf-8'});
   try{
-    const {error}=await sb.storage.from(MEDIA_BUCKET).upload(path,blob,{upsert:true,contentType:'text/html'});
+    // Recreate the object so Supabase stores the correct HTML content-type.
+    // Ignore remove errors (the object may not exist yet).
+    try { await sb.storage.from(MEDIA_BUCKET).remove([path]); } catch(e) {}
+    const {error}=await sb.storage.from(MEDIA_BUCKET).upload(
+      path,
+      blob,
+      {upsert:false, contentType:'text/html; charset=utf-8', cacheControl:'3600'}
+    );
     if(error) throw error;
-    if(currentReceipt.id){
-      await supa(sb.from('donations').update({receipt_file_path:path}).eq('id',currentReceipt.id),'पावती link save');
-    }
+    // Do not write receipt_file_path to donations: that column is not required.
     currentReceipt.receiptFilePath=path;
     currentReceipt.receipt_file_path=path;
-    showReceiptQr(url);
+    currentReceipt.receiptPublicUrl=url;
+    currentReceipt.receiptViewerUrl=viewerUrl;
+    showReceiptQr(viewerUrl);
     return true;
   }catch(err){
     console.error('receipt upload',err);
@@ -426,38 +466,52 @@ async function shareCombinedReceipt(){
   if(!currentReceipt) return alert('आधी actual वर्गणी save करून पावती तयार करा.');
   if(!requireAdmin('📤 पावती Share')) return;
 
-  // Upload automatically if the receipt has not been uploaded yet.
-  if(!currentReceipt.receiptFilePath){
-    const ok=await uploadCurrentReceipt();
-    if(!ok) return;
-  }
-
   const card=document.querySelector('.receipt-card');
   if(!card) return alert('पावती card सापडली नाही.');
+  if(!window.html2canvas) return alert('Receipt image engine load झाला नाही. Internet connection तपासा आणि page refresh करा.');
 
+  const waWindow=window.open('https://web.whatsapp.com/','_blank');
   try{
-    if(window.html2canvas){
-      const canvas=await html2canvas(card,{backgroundColor:'#fffdf8',scale:2,useCORS:true,allowTaint:false});
-      const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
-      if(blob){
-        const file=new File([blob],`Pavati-${String(combinedReceiptNo.textContent).padStart(4,'0')}.png`,{type:'image/png'});
-        if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-          await navigator.share({title:'श्री युवा गणेश उत्सव मंडळ - पावती',text:'हीच original पावती',files:[file]});
+    const canvas=await html2canvas(card,{backgroundColor:'#fffdf8',scale:2,useCORS:true,allowTaint:false,logging:false});
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    if(!blob) throw new Error('PNG तयार झाला नाही');
+    const no=String(combinedReceiptNo.textContent).padStart(4,'0');
+    const fileName=`Pavati-${no}.png`;
+    const file=new File([blob],fileName,{type:'image/png'});
+
+    // Mobile / supported browsers: share the actual image file.
+    if(navigator.share){
+      try{
+        if(!navigator.canShare || navigator.canShare({files:[file]})){
+          await navigator.share({title:'श्री युवा गणेश उत्सव मंडळ - पावती',files:[file]});
           return;
         }
-        const a=document.createElement('a');
-        a.href=URL.createObjectURL(blob); a.download=file.name; a.click();
-        setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-        alert('पावतीचा actual PNG image download झाला. WhatsApp मध्ये हा image attach करा.');
-        return;
+      }catch(e){
+        if(e && e.name==='AbortError') return;
       }
     }
-  }catch(e){ console.warn('receipt image share',e); }
 
-  const url=publicReceiptUrl(currentReceipt.receiptFilePath);
-  const text=receiptText()+`\nहीच original पावती: ${url}`;
-  try { await navigator.clipboard.writeText(url); } catch(e){}
-  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(text),'_blank');
+    // Desktop Chrome: copy the actual receipt image to clipboard when supported.
+    // WhatsApp Web can then receive it with Ctrl+V.
+    if(window.ClipboardItem && navigator.clipboard && window.isSecureContext){
+      try{
+        await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);
+        alert('Actual पावती image copy झाली आहे. WhatsApp Web उघडले आहे — chat उघडून Ctrl+V करा. कोणताही viewer link पाठवला जाणार नाही.');
+        return;
+      }catch(e){ console.warn('image clipboard copy failed',e); }
+    }
+
+    // Reliable desktop fallback: download the actual image only.
+    const a=document.createElement('a');
+    const objectUrl=URL.createObjectURL(blob);
+    a.href=objectUrl; a.download=fileName; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(objectUrl),2000);
+    alert('Actual पावती PNG download झाली. WhatsApp Web मध्ये हा PNG attach करा. कोणताही viewer link पाठवला जाणार नाही.');
+  }catch(e){
+    console.error('receipt image share',e);
+    try{ if(waWindow && !waWindow.closed) waWindow.close(); }catch(_e){}
+    alert('पावतीचा actual image तयार करता आला नाही: '+(e.message||e));
+  }
 }
 
 dmethod.onchange=()=>{dtxn.style.display=dmethod.value==='Online'?'block':'none';if(dmethod.value!=='Online')dtxn.value='';};
@@ -622,9 +676,11 @@ if(isAdminLoggedIn()){loginPanel.style.display='none';adminPanel.style.display='
 updateAccessUI();
 
 (async()=>{
-  try{ await loadGallery();
-loadData(); }
-  catch(e){ alert('Supabase connect झाले नाही. Project URL / Publishable Key तपासा.'); }
+  try{
+    if(await openPublicReceiptIfRequested()) return;
+    await loadGallery();
+    await loadData();
+  }catch(e){ alert('Supabase connect झाले नाही. Project URL / Publishable Key तपासा.'); }
 })();
 </script>
 </body>

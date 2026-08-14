@@ -417,7 +417,7 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 <select id="dmethod"><option value="Cash">💵 Cash / रोख</option><option value="Online">📱 Online / ऑनलाइन</option></select>
 <input id="dtxn" placeholder="Transaction ID / व्यवहार क्रमांक (Online असल्यास)" style="display:none">
 <input id="ddate" type="date" required>
-<label>✍️ अधिकृत स्वाक्षरी / Signature<input id="dsignature" placeholder="उदा. अध्यक्ष / सचिव" autocomplete="off"></label>
+<label>✍️ अधिकृत स्वाक्षरी / Signature<input id="dsignature" placeholder="उदा. अध्यक्ष / सचिव" autocomplete="off"><button type="button" class="primary" style="margin-top:7px" onclick="refreshSignature()">🔄 Signature Refresh</button></label>
 <button class="primary">💾 जतन करा + पावती तयार करा</button>
 </form>
 </div>
@@ -540,9 +540,10 @@ async function openPublicReceiptIfRequested(){
     const method=rec.method==='Cash'?'💵 Cash / रोख':'📱 Online / ऑनलाइन';
     const txn=rec.txn_id?`<p>Transaction ID: <b>${esc(rec.txn_id)}</b></p>`:'';
     const no=String(rec.receipt_no||'').padStart(4,'0');
-    const viewerUrl=publicReceiptViewerUrl(id);
+    const sig=new URLSearchParams(window.location.search).get('sig') || '';
+    const viewerUrl=publicReceiptViewerUrl(id, sig);
     const logo=document.querySelector('.receipt-logo')?.src||'';
-    document.body.innerHTML=`<main style="min-height:100vh;background:#fff8ed;padding:24px;font-family:Arial,sans-serif"><div style="max-width:680px;margin:auto;border:3px solid #b45309;border-radius:18px;padding:28px;background:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)"><img src="${logo}" style="width:150px;height:150px;object-fit:contain;border-radius:50%"><h1>श्री युवा गणेश उत्सव मंडळ</h1><h2>पावती / RECEIPT</h2><p>पावती क्र. / Receipt No.: <b>${esc(no)}</b></p><hr><p>नाव / Name: <b>${esc(rec.name)}</b></p><p>रक्कम / Amount: <b>${money(rec.amount)}</b></p><p>Payment / पेमेंट: <b>${method}</b></p>${txn}<p>तारीख / Date: <b>${esc(rec.donation_date||'')}</b></p><div style="margin:18px auto;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(viewerUrl)}" width="180" height="180" alt="Receipt QR Code"><div>QR Scan करून हीच पावती Online उघडा</div></div><p>अधिकृत स्वाक्षरी / Authorized Signature</p><p>धन्यवाद 🙏</p><button onclick="window.print()" style="padding:10px 18px;border:0;border-radius:8px;background:#b45309;color:#fff;cursor:pointer">🧾 Print / Save PDF</button></div></main>`;
+    document.body.innerHTML=`<main style="min-height:100vh;background:#fff8ed;padding:24px;font-family:Arial,sans-serif"><div id="publicReceiptCard" style="max-width:680px;margin:auto;border:3px solid #b45309;border-radius:18px;padding:28px;background:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.08)"><img src="${logo}" style="width:150px;height:150px;object-fit:contain;border-radius:50%"><h1>श्री युवा गणेश उत्सव मंडळ</h1><h2>पावती / RECEIPT</h2><p>पावती क्र. / Receipt No.: <b>${esc(no)}</b></p><hr><p>नाव / Name: <b>${esc(rec.name)}</b></p><p>रक्कम / Amount: <b>${money(rec.amount)}</b></p><p>Payment / पेमेंट: <b>${method}</b></p>${txn}<p>तारीख / Date: <b>${esc(rec.donation_date||'')}</b></p><div style="margin:18px auto;text-align:center"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(viewerUrl)}" width="180" height="180" alt="Receipt QR Code"><div>QR Scan करून हीच पावती Online उघडा</div></div><p>अधिकृत स्वाक्षरी / Authorized Signature</p><p style="font-weight:800;font-size:20px;min-height:28px">${esc(sig)}</p><p>धन्यवाद 🙏</p><button onclick="window.print()" style="padding:10px 18px;border:0;border-radius:8px;background:#b45309;color:#fff;cursor:pointer">🧾 Print / Save PDF</button></div><div style="max-width:680px;margin:16px auto;text-align:center;display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="primary" type="button" onclick="window.print()">🧾 Print / Save PDF</button><button class="primary" type="button" onclick="downloadPublicReceipt()">⬇️ Online Download</button></div></main>`;
     document.title=`पावती ${no} - श्री युवा गणेश उत्सव मंडळ`;
     return true;
   }catch(e){
@@ -551,6 +552,21 @@ async function openPublicReceiptIfRequested(){
   }
 }
 
+async function downloadPublicReceipt(){
+  const card=document.getElementById('publicReceiptCard') || document.querySelector('main > div');
+  if(!card) return alert('पावती सापडली नाही.');
+  if(!window.html2canvas) return alert('Download engine load झाला नाही. Page refresh करून पुन्हा प्रयत्न करा.');
+  try{
+    const canvas=await html2canvas(card,{backgroundColor:'#fff',scale:2,useCORS:true,allowTaint:false,logging:false});
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+    if(!blob) throw new Error('PNG तयार झाला नाही');
+    const no=(document.title.match(/\d+/)||['0000'])[0].padStart(4,'0');
+    const a=document.createElement('a'), url=URL.createObjectURL(blob);
+    a.href=url; a.download='Borgaon-Cha-Maharaja-Pavati-'+no+'.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }catch(e){ alert('Online पावती download करता आली नाही: '+(e.message||e)); }
+}
 async function loadData(){
   loading = true;
   if(!sb){
@@ -667,9 +683,13 @@ async function deleteRecord(type,id){
 function isAdminLoggedIn(){ return localStorage.getItem('bm_admin_logged_in') === '1'; }
 function isDonationUnlocked(){ return sessionStorage.getItem('bm_donation_unlocked') === '1'; }
 function isDashboardUnlocked(){ return sessionStorage.getItem('bm_dashboard_unlocked') === '1'; }
+function refreshSignature(){
+  const el=document.getElementById('dsignature');
+  if(el) el.value=localStorage.getItem('bm_receipt_signature') || '';
+}
 function unlockDashboard(){
   const pw = prompt('📊 Dashboard / Total वर्गणी पाहण्यासाठी Special Password टाका:');
-  if(pw === 'Jayganesh'){
+  if(String(pw ?? '').trim() === 'Jayganesh'){
     sessionStorage.setItem('bm_dashboard_unlocked','1');
     updateDashboardLockUI();
     render();
@@ -799,7 +819,8 @@ async function generateCombinedReceipt(x, receiptNo){
   combinedPreviewDate.textContent=x.date||x.donation_date||today;
   combinedPreviewSignature.textContent=x.signature||localStorage.getItem('bm_receipt_signature')||'';
   const receiptId=currentReceipt.id;
-  if(receiptId) showReceiptQr(publicReceiptViewerUrl(receiptId));
+  const receiptSignature=x.signature || localStorage.getItem('bm_receipt_signature') || '';
+  if(receiptId) showReceiptQr(publicReceiptViewerUrl(receiptId, receiptSignature));
   else { const box=document.getElementById('receiptQr'); if(box) box.style.display='none'; }
   combinedReceiptPreview.style.display='block';
 }
@@ -834,7 +855,7 @@ donationForm.onsubmit=async e=>{
     // After successful save + receipt generation/upload, clear all entry fields.
     e.target.reset();
     dname.value=''; dphone.value=''; damount.value=''; dmethod.value='Cash';
-    dtxn.value=''; dtxn.style.display='none'; ddate.value=today; dsignature.value='';
+    dtxn.value=''; dtxn.style.display='none'; ddate.value=today; refreshSignature();
     alert('वर्गणी/देणगी save झाली आणि पावती तयार झाली. Entry form automatically clear झाला.');
   }catch(err){} finally{btn.disabled=false;}
 };
@@ -865,9 +886,9 @@ function downloadCombinedReceipt(){
   }).catch(e=>alert('पावती download करता आली नाही: '+(e.message||e)));
 }
 function receiptText(){return `श्री युवा गणेश उत्सव मंडळ - पावती\nनाव: ${combinedPreviewName.textContent}\nरक्कम: ${combinedPreviewAmount.textContent}\nPayment: ${combinedPreviewMethod.textContent}\nपावती क्र.: ${combinedReceiptNo.textContent}\nतारीख: ${combinedPreviewDate.textContent}`;}
-function publicReceiptViewerUrl(id){
+function publicReceiptViewerUrl(id, signature){
   const base=window.location.origin + window.location.pathname;
-  return base + '?receipt=' + encodeURIComponent(id);
+  return base + '?receipt=' + encodeURIComponent(id) + (signature ? '&sig=' + encodeURIComponent(signature) : '');
 }
 function receiptHtml(publicUrl){
   const esc=v=>String(v??'').replace(/[&<>\"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[m]));
@@ -1106,7 +1127,7 @@ function logout(){loginPanel.style.display='block';adminPanel.style.display='non
 loginForm.onsubmit=e=>{e.preventDefault();if(password.value==='02102023'){loginPanel.style.display='none';adminPanel.style.display='block';localStorage.setItem('bm_admin_logged_in','1');updateAccessUI();}else alert('Password चुकीचा आहे.');};
 if(isAdminLoggedIn()){loginPanel.style.display='none';adminPanel.style.display='block';}
 updateAccessUI();
-
+refreshSignature();
 (async()=>{
   try{
     if(await openPublicReceiptIfRequested()) return;

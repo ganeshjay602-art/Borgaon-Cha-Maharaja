@@ -1,3 +1,15 @@
+<!-- Google Sheet structure:
+Sheet 1: वर्गणी / देणगी
+Sheet 2: 💸 खर्च
+Each entry sends its target sheet explicitly.
+-->
+<!-- Updated Google Sheet mapping: every field is a separate column.
+Donation: Date | Type | Name | Mobile | Amount | Payment | Transaction_ID | Receipt_No
+Expense: Date | Type | Particulars | Amount | Payment | Bill_Photo
+-->
+<!-- Google Sheet: Date is sent as a separate `Date` column automatically.
+Donation: Type, Date, Name, Mobile, Amount, Payment, Transaction_ID, Receipt_No.
+Expense: Type, Date, Particulars, Amount, Payment, Bill_Photo. -->
 <!DOCTYPE html>
 <html lang="mr">
 <head>
@@ -367,12 +379,12 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 </div>
 </section>
 <section id="dashboard" class="page">
-<div id="dashboardLockNotice" class="panel" style="text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
+<div id="dashboardLockNotice" class="panel" style="display:none;text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
 <h2 style="margin:0 0 8px">🔐 Dashboard</h2>
 <p class="muted">📊 Dashboard आणि Total वर्गणी पाहण्यासाठी Special Password टाका.</p>
 <button class="primary" type="button" onclick="unlockDashboard()">🔑 Special Password ने उघडा</button>
 </div>
-<div id="dashboardLockedContent" style="display:none">
+<div id="dashboardLockedContent" style="display:block">
 <h2>📊 Dashboard</h2>
 <p class="muted">🙏 वर्षनिहाय वर्गणी / खर्च आणि नोंदी</p>
 <div class="panel" style="margin-top:12px">
@@ -380,20 +392,21 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 <select id="dashboardYear" onchange="render()" style="margin-top:6px;max-width:240px"></select></label>
 </div>
 <div class="cards">
+<div class="card"><small>💰 मंडळाची एकूण वर्गणी</small><div id="mandalTotalDonation" class="amount green">₹0</div><div id="mandalTotalDonationAdmin" class="admin-only" style="margin-top:8px"></div></div>
 <div class="card"><small>एकूण वर्गणी (<span id="dashboardSelectedYearLabel"></span>)</small><div id="totalDonation" class="amount green">₹0</div></div>
 <div class="card"><small>एकूण खर्च</small><div id="totalExpense" class="amount red">₹0</div></div>
 <div class="card"><small>शिल्लक रक्कम</small><div id="balance" class="amount orange">₹0</div></div>
 <div class="card"><small>सभासद संख्या</small><div id="memberCount" class="amount">0</div></div>
 </div>
 <div class="panel" style="margin-top:18px">
-<h3>💰 वर्गणी नोंदी</h3>
+<h3>💰 वर्गणी नोंदी</h3><p class="muted">वरील ⭐ मंडळाची एकूण वर्गणी ही Admin ने स्वतंत्रपणे ठेवलेली रक्कम आहे. Individual वर्गणी / देणगी entries खाली स्वतंत्र दिसतात.</p>
 <p class="muted">निवडलेल्या वर्षाची वर्गणी नोंद येथे दिसेल. प्रत्येक वर्षाचा receipt क्रमांक 0001 पासून स्वतंत्र सुरू होईल.</p>
 <div style="overflow-x:auto">
-<table><thead><tr><th>नाव</th><th>रक्कम</th><th>पद्धत</th><th>दिनांक</th><th>पावती क्र.</th></tr></thead>
+<table><thead><tr><th>नाव</th><th>रक्कम</th><th>पद्धत</th><th>दिनांक</th><th>पावती क्र.</th><th class="admin-col">Action</th></tr></thead>
 <tbody id="dashboardDonationRows"><tr><td colspan="5" class="muted">नोंदी उपलब्ध नाहीत.</td></tr></tbody></table>
 </div>
 </div>
-<div class="panel admin-only"><h3>जलद नोंद</h3><div class="actions">
+<div class="panel"><h3>जलद नोंद</h3><div class="actions">
 <button class="primary" onclick="showById('donation')">+ वर्गणी / देणगी + पावती</button>
 <button class="primary" onclick="showById('expense')">+ खर्च नोंदवा</button>
 <button class="primary" onclick="showById('members')">+ सभासद जोडा</button>
@@ -402,9 +415,9 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 </section>
 
 <section id="donation" class="page">
-<div id="donationLockNotice" class="panel" style="text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
+<div id="donationLockNotice" class="panel" style="display:none;text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
 <h2 style="margin:0 0 8px">🔐 वर्गणी / देणगी 🧾 पावती / Receipt</h2>
-<p class="muted">ही सुविधा Admin Lock ने सुरक्षित आहे. देणगी / पावती पाहण्यासाठी Admin Password आवश्यक आहे.</p>
+<p class="muted">वर्गणी / देणगी नोंद पाहता व जतन करता येईल. Edit / Delete फक्त Admin करू शकतो.</p>
 <button class="primary" type="button" onclick="unlockDonationArea()">🔑 Admin Login ने उघडा</button>
 </div>
 <div id="donationLockedContent" style="display:none">
@@ -422,11 +435,11 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 </form>
 </div>
 <div class="panel" id="receiptAdminNotice" style="text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
-<h3>🔐 पावती / Receipt — Admin Only</h3>
-<p class="muted">पावती पाहण्यासाठी / Generate करण्यासाठी Admin Password आवश्यक आहे.</p>
+<h3>🧾 पावती / Receipt</h3>
+<p class="muted">पावती Generate / Print करता येईल. Edit / Delete अधिकार फक्त Admin साठी आहेत.</p>
 <button class="primary" type="button" onclick="show('admin',document.getElementById('adminNav'))">🔑 Admin Login</button>
 </div>
-<div class="panel admin-only" id="receiptPanel"><h3>🧾 पावती / Receipt</h3><div id="combinedReceiptPreview" style="display:none;border:2px dashed #dc2626;padding:10px">
+<div class="panel" id="receiptPanel"><h3>🧾 पावती / Receipt</h3><div id="combinedReceiptPreview" style="display:none;border:2px dashed #dc2626;padding:10px">
 <div class="receipt-card" style="text-align:center">
 <img class="receipt-logo" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" data-shared-logo="1" alt="श्री युवा गणेश उत्सव मंडळ मंडळ लोगो">
 <div>🙏 ।। गणपती बाप्पा मोरया ।। 🙏</div><h2>श्री युवा गणेश उत्सव मंडळ</h2><h3>श्री युवा गणेश उत्सव मंडळ, बोरगाव (मेघे), वर्धा</h3><hr>
@@ -437,14 +450,14 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 <div id="receiptQr" style="margin:14px auto;display:none;text-align:center"><div id="qrCanvas" style="display:inline-block"></div><div class="muted" style="margin-top:6px">QR Scan करून हीच पावती Online उघडा व Print / Download करा</div></div><br><div style="margin-top:18px;text-align:right"><div style="font-size:14px;color:#7d5b4f">अधिकृत स्वाक्षरी / Authorized Signature</div><div id="combinedPreviewSignature" style="min-height:28px;margin-top:4px;font-weight:800;font-size:18px"></div><div style="border-top:1px solid #8d6e63;width:220px;margin:6px 0 0 auto"></div></div>
 <div class="actions"><button class="primary" type="button" onclick="printCombinedReceipt()">🧾 पावती Generate / Print-PDF</button><button class="primary" type="button" onclick="shareCombinedReceipt()">📤 Share पावती</button><button class="primary" type="button" onclick="downloadCombinedReceipt()">⬇️ पावती Download</button><small class="muted">पावती Supabase Storage मध्ये save होत नाही. QR Code फक्त Receipt viewer उघडण्यासाठी आहे.</small></div>
 </div></div></div>
-<div class="panel"><h3>📋 वर्गणी नोंदी</h3><p class="muted">ही यादी Public ला पाहता येईल. नोंद/बदल/हटवणे Admin अधिकारांनुसार आहे.</p><table><thead><tr><th>नाव / Name</th><th>रक्कम / Amount</th><th>Payment</th><th>तारीख / Date</th><th>पावती क्र.</th><th class="admin-col">Action</th></tr></thead><tbody id="donationRows"></tbody></table></div>
+<div class="panel"><h3>📋 वर्गणी नोंदी</h3><p class="muted">ही यादी सर्वांना पाहता येईल. ✏️ Edit / 🗑️ Delete फक्त Admin करू शकतो.</p><table><thead><tr><th>नाव / Name</th><th>रक्कम / Amount</th><th>Payment</th><th>तारीख / Date</th><th>पावती क्र.</th><th class="admin-col">Action</th></tr></thead><tbody id="donationRows"></tbody></table></div>
 </div>
 </section>
 
 <section id="expense" class="page">
-<h2>💸 खर्च नोंद</h2>
+<h2>💸 खर्च नोंद</h2><p class="muted">खर्चाची नोंद सर्वांना करता येईल. 🗑️ Delete फक्त Admin करू शकतो.</p>
 <div class="panel">
-<form id="expenseForm"><input id="ename" placeholder="खर्चाचा तपशील" required><input id="eamount" type="number" min="1" placeholder="रक्कम ₹" required><input id="edate" type="date" required><label>Bill / Receipt Photo 📸<input id="expenseBill" type="file" accept="image/*"></label><button class="primary">खर्च जतन करा</button></form>
+<form id="expenseForm"><input id="ename" placeholder="खर्चाचा तपशील" required><input id="eamount" type="number" min="1" placeholder="रक्कम ₹" required><select id="epayment" required><option value="Cash">💵 Cash / रोख</option><option value="Online">📱 Online / ऑनलाइन</option><option value="UPI">🔵 UPI</option><option value="Bank">🏦 Bank / बँक</option></select><input id="edate" type="date" required><label>Bill / Receipt Photo 📸<input id="expenseBill" type="file" accept="image/*"></label><button class="primary">खर्च जतन करा</button></form>
 </div>
 <div class="panel"><h3>खर्चाच्या नोंदी</h3><table><thead><tr><th>तपशील</th><th>रक्कम</th><th>तारीख</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
 </section>
@@ -487,8 +500,31 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 
 <section id="reports" class="page">
 <h2>📈 जमा-खर्च Report</h2>
-<div class="panel"><p>एकूण वर्गणी: <b id="rDonation">₹0</b></p><p>एकूण खर्च: <b id="rExpense">₹0</b></p><p>शिल्लक: <b id="rBalance">₹0</b></p>
-<button class="primary" onclick="window.print()">🖨️ Report Print / PDF</button></div>
+<div class="panel">
+  <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+    <label style="min-width:220px">📅 वर्ष / Year
+      <select id="reportYear" onchange="renderReport()" style="margin-top:6px"></select>
+    </label>
+    <button class="primary" type="button" onclick="renderReport()">🔄 Refresh Report</button>
+    <button class="primary" type="button" onclick="window.print()">🖨️ Report Print / PDF</button>
+    <button class="primary" type="button" onclick="exportCSV()">⬇️ CSV</button>
+  </div>
+</div>
+<div class="cards" style="margin-top:18px">
+  <div class="card"><small>💰 एकूण वर्गणी / देणगी</small><div id="rDonation" class="amount green">₹0</div></div>
+  <div class="card"><small>💸 एकूण खर्च</small><div id="rExpense" class="amount red">₹0</div></div>
+  <div class="card"><small>🟠 शिल्लक रक्कम</small><div id="rBalance" class="amount orange">₹0</div></div>
+</div>
+<div class="panel">
+  <h3>💰 वर्गणी / देणगी नोंदी</h3>
+  <div style="overflow-x:auto"><table><thead><tr><th>नाव</th><th>रक्कम</th><th>Payment</th><th>दिनांक</th><th>पावती</th></tr></thead>
+  <tbody id="reportDonationRows"><tr><td colspan="5" class="muted">नोंदी उपलब्ध नाहीत.</td></tr></tbody></table></div>
+</div>
+<div class="panel">
+  <h3>💸 खर्च नोंदी</h3>
+  <div style="overflow-x:auto"><table><thead><tr><th>तपशील</th><th>रक्कम</th><th>दिनांक</th><th>Bill</th></tr></thead>
+  <tbody id="reportExpenseRows"><tr><td colspan="4" class="muted">नोंदी उपलब्ध नाहीत.</td></tr></tbody></table></div>
+</div>
 </section>
 </main>
 
@@ -505,7 +541,13 @@ const sb = (window.supabase && typeof window.supabase.createClient === 'function
 window.__SUPABASE_READY__ = !!sb;
 
 const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', {minimumFractionDigits:0, maximumFractionDigits:2});
-const today = new Date().toISOString().slice(0,10);
+function localDateIST(){
+  const parts = new Intl.DateTimeFormat('en-CA',{
+    timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'
+  }).formatToParts(new Date()).reduce((o,p)=>(o[p.type]=p.value,o),{});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+const today = localDateIST();
 document.querySelectorAll('input[type=date]').forEach(x => { if(!x.value) x.value = today; });
 
 let data = {donations:[], expenses:[], members:[]};
@@ -517,6 +559,32 @@ function escapeHtml(v){
   return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }
 
+const GOOGLE_SHEET_WEBHOOK_KEY='bm_google_sheet_webhook_url_v1';
+const GOOGLE_SHEET_WEBHOOK_DEFAULT='https://script.google.com/macros/s/AKfycbyB3oJlMoYI_bbOd3v5p4ezpq7LMlNt91Mg93qSZ6HzdpwMqE5M18Qy8_6VYnfuVAzoYA/exec';
+function getSheetWebhookUrl(){
+  try{return localStorage.getItem(GOOGLE_SHEET_WEBHOOK_KEY)||GOOGLE_SHEET_WEBHOOK_DEFAULT;}catch(e){return GOOGLE_SHEET_WEBHOOK_DEFAULT;}
+}
+async function syncToGoogleSheet(record){
+  const url=getSheetWebhookUrl();
+  if(!url) return {skipped:true};
+  try{
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(record)});
+    return {ok:res.ok,status:res.status};
+  }catch(e){console.warn('Google Sheet sync failed',e);return {ok:false,error:e.message||String(e)};}
+}
+function setGoogleSheetWebhookUrl(url){
+  try{localStorage.setItem(GOOGLE_SHEET_WEBHOOK_KEY,String(url||'').trim());}catch(e){}
+}
+// Google Sheet columns sent by the website:
+// Donation: Type | Date | Name | Mobile | Amount | Payment | Transaction_ID | Receipt_No | Source | Saved_At
+// Expense:  Type | Date | Particulars | Amount | Payment | Bill_Photo | Source | Saved_At
+function configureGoogleSheetSync(){
+  const current=getSheetWebhookUrl();
+  const url=prompt('Google Apps Script Web App URL टाका. रिकामे ठेवल्यास Sheet sync बंद राहील.',current);
+  if(url===null) return;
+  setGoogleSheetWebhookUrl(url);
+  alert(url.trim()?'Google Sheet auto-save URL जतन झाला.':'Google Sheet auto-save बंद केला.');
+}
 async function supa(op, label='Supabase'){
   try{
     const result = await op;
@@ -620,6 +688,27 @@ async function migrateLocalDataIfNeeded(){
   }catch(e){ console.error(e); }
 }
 
+function getMandalTotalDonation(){
+  const n=Number(localStorage.getItem('bm_mandal_total_donation')||0);
+  return Number.isFinite(n) && n>=0 ? n : 0;
+}
+function setMandalTotalDonation(){
+  if(!isAdminLoggedIn()) return alert('Admin Login आवश्यक आहे.');
+  const current=getMandalTotalDonation();
+  const value=prompt('मंडळाची एकूण वर्गणी रक्कम (₹) टाका:', current);
+  if(value===null) return;
+  const cleaned=String(value).replace(/,/g,'').trim();
+  if(cleaned==='' || !/^\d+(\.\d{1,2})?$/.test(cleaned)) return alert('कृपया योग्य रक्कम टाका.');
+  localStorage.setItem('bm_mandal_total_donation', String(Number(cleaned)));
+  render();
+}
+function deleteMandalTotalDonation(){
+  if(!isAdminLoggedIn()) return alert('Admin Login आवश्यक आहे.');
+  if(!confirm('मंडळाची एकूण वर्गणी रक्कम Delete करायची आहे का?')) return;
+  localStorage.removeItem('bm_mandal_total_donation');
+  render();
+}
+
 function render(){
   const yearSelect=document.getElementById('dashboardYear');
   const years=new Set([String(new Date().getFullYear())]);
@@ -638,10 +727,31 @@ function render(){
   memberCount.textContent=data.members.length; const yl=document.getElementById('dashboardSelectedYearLabel'); if(yl) yl.textContent=selectedYear;
   rDonation.textContent=money(td); rExpense.textContent=money(te); rBalance.textContent=money(td-te);
 
+  // Dedicated जमा-खर्च report (same live Supabase data).
+  const reportYear=document.getElementById('reportYear');
+  if(reportYear){
+    const reportCurrent=reportYear.value || selectedYear;
+    reportYear.innerHTML=sortedYears.map(y=>`<option value="${y}">${y}</option>`).join('');
+    reportYear.value=sortedYears.includes(reportCurrent)?reportCurrent:selectedYear;
+    renderReport();
+  }
+
   const admin=isAdminLoggedIn();
+  const mandalTotalEl=document.getElementById('mandalTotalDonation');
+  if(mandalTotalEl) mandalTotalEl.textContent=money(getMandalTotalDonation());
+  const mandalAdminEl=document.getElementById('mandalTotalDonationAdmin');
+  if(mandalAdminEl){
+    mandalAdminEl.innerHTML=admin
+      ? `<button type="button" onclick="setMandalTotalDonation()">✏️ Amount Edit</button> <button type="button" onclick="deleteMandalTotalDonation()">🗑️ Delete</button>`
+      : '';
+    mandalAdminEl.style.display=admin?'block':'none';
+  }
   const dashboardDonationRows = document.getElementById('dashboardDonationRows');
   if(dashboardDonationRows){
-    dashboardDonationRows.innerHTML = yearDonations.length ? yearDonations.map(x => `<tr><td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td><td>${x.method==='Online'?'📱 Online / ऑनलाइन':'💵 Cash / रोख'}</td><td>${escapeHtml(x.donation_date||'')}</td><td>${escapeHtml(String(x.receipt_no||''))}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">नोंदी उपलब्ध नाहीत.</td></tr>';
+    dashboardDonationRows.innerHTML = yearDonations.length ? yearDonations.map(x => admin
+      ? `<tr><td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td><td>${x.method==='Online'?'📱 Online / ऑनलाइन':'💵 Cash / रोख'}</td><td>${escapeHtml(x.donation_date||'')}</td><td>${escapeHtml(String(x.receipt_no||''))}</td><td><button onclick="editDonation('${x.id}')">✏️ Edit</button> <button onclick="deleteRecord('donations','${x.id}')">🗑️ Delete</button></td></tr>`
+      : `<tr><td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td><td>${x.method==='Online'?'📱 Online / ऑनलाइन':'💵 Cash / रोख'}</td><td>${escapeHtml(x.donation_date||'')}</td><td>${escapeHtml(String(x.receipt_no||''))}</td></tr>`
+    ).join('') : `<tr><td colspan="${admin?6:5}" class="muted">नोंदी उपलब्ध नाहीत.</td></tr>`;
   }
 
   donationRows.innerHTML=[...data.donations].sort((a,b)=>Number(b.amount||0)-Number(a.amount||0)).map(x => admin
@@ -653,18 +763,35 @@ function render(){
   expenseRows.innerHTML=data.expenses.map(x => `<tr>
     <td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td><td>${escapeHtml(x.expense_date||'')}</td>
     <td>${x.bill_photo_path?`<a href="${publicBillUrl(x.bill_photo_path)}" target="_blank" rel="noopener">📸 Photo</a>`:''}
-    <button onclick="deleteRecord('expenses','${x.id}')">🗑️</button></td>
+    ${admin?`<button onclick="deleteRecord('expenses','${x.id}')">🗑️ Delete</button>`:''}</td>
   </tr>`).join('');
 
   memberRows.innerHTML=data.members.map(x => `<tr>
     <td>${escapeHtml(x.name)}</td><td>${escapeHtml(x.phone||'-')}</td><td>${escapeHtml(x.role)}</td>
-    <td><button class="member-admin-action" onclick="deleteRecord('members','${x.id}')">🗑️</button></td>
+    <td>${admin?`<button class="member-admin-action" onclick="deleteRecord('members','${x.id}')">🗑️ Delete</button>`:''}</td>
   </tr>`).join('');
   const memberFormEl=document.getElementById('memberForm');
   if(memberFormEl) memberFormEl.style.display=admin?'block':'none';
   document.querySelectorAll('.member-admin-action').forEach(el=>el.style.display=admin?'inline-block':'none');
 }
 
+function renderReport(){
+  const sel=document.getElementById('reportYear');
+  const year=sel?.value || String(new Date().getFullYear());
+  const donations=data.donations.filter(x=>String(x.donation_date||'').slice(0,4)===year)
+    .sort((a,b)=>String(b.donation_date||'').localeCompare(String(a.donation_date||'')));
+  const expenses=data.expenses.filter(x=>String(x.expense_date||'').slice(0,4)===year)
+    .sort((a,b)=>String(b.expense_date||'').localeCompare(String(a.expense_date||'')));
+  const td=donations.reduce((a,x)=>a+Number(x.amount||0),0);
+  const te=expenses.reduce((a,x)=>a+Number(x.amount||0),0);
+  const drows=document.getElementById('reportDonationRows');
+  const erows=document.getElementById('reportExpenseRows');
+  if(document.getElementById('rDonation')) document.getElementById('rDonation').textContent=money(td);
+  if(document.getElementById('rExpense')) document.getElementById('rExpense').textContent=money(te);
+  if(document.getElementById('rBalance')) document.getElementById('rBalance').textContent=money(td-te);
+  if(drows) drows.innerHTML=donations.length ? donations.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td><td>${x.method==='Online'?'📱 Online / ऑनलाइन':'💵 Cash / रोख'}</td><td>${escapeHtml(x.donation_date||'')}</td><td>${escapeHtml(String(x.receipt_no||''))}</td></tr>`).join('') : '<tr><td colspan="5" class="muted">या वर्षात वर्गणी / देणगी नोंद नाही.</td></tr>';
+  if(erows) erows.innerHTML=expenses.length ? expenses.map(x=>`<tr><td>${escapeHtml(x.name)}</td><td>${money(x.amount)}</td><td>${escapeHtml(x.expense_date||'')}</td><td>${x.bill_photo_path?`<a href="${publicBillUrl(x.bill_photo_path)}" target="_blank" rel="noopener">📸 Photo</a>`:'-'}</td></tr>`).join('') : '<tr><td colspan="4" class="muted">या वर्षात खर्च नोंद नाही.</td></tr>';
+}
 function publicBillUrl(path){
   return SUPABASE_URL + '/storage/v1/object/public/expense-bills/' + path.split('/').map(encodeURIComponent).join('/');
 }
@@ -709,7 +836,6 @@ function updateDashboardLockUI(){
   if(content) content.style.display=unlocked?'block':'none';
 }
 function unlockDonationArea(){
-  if(!requireAdmin('🧾 देणगी / पावती / Receipt — Admin सुविधा')) return;
   sessionStorage.setItem('bm_donation_unlocked','1');
   const lock=document.getElementById('donationLockNotice');
   const content=document.getElementById('donationLockedContent');
@@ -743,22 +869,21 @@ function activatePage(id,btn){
   return true;
 }
 function show(id,btn){
-  if(id==='donation' && !requireAdmin('🧾 देणगी / पावती / Receipt — Admin सुविधा')) return;
-  if(['expense','reports'].includes(id) && !requireAdmin('🔐 Admin सुविधा')) return;
   activatePage(id,btn);
   if(id==='dashboard'){
-    updateDashboardLockUI();
-    if(!isDashboardUnlocked()) unlockDashboard();
-    else render();
+    const lock=document.getElementById('dashboardLockNotice');
+    const content=document.getElementById('dashboardLockedContent');
+    if(lock) lock.style.display='none';
+    if(content) content.style.display='block';
+    render();
     return;
   }
   if(id==='donation'){
     const lock=document.getElementById('donationLockNotice');
     const content=document.getElementById('donationLockedContent');
-    if(lock) lock.style.display=isDonationUnlocked()?'none':'block';
-    if(content) content.style.display=isDonationUnlocked()?'block':'none';
-    if(!isDonationUnlocked()) unlockDonationArea();
-    else render();
+    if(lock) lock.style.display='none';
+    if(content) content.style.display='block';
+    render();
     return;
   }
   render();
@@ -825,10 +950,27 @@ async function generateCombinedReceipt(x, receiptNo){
   combinedReceiptPreview.style.display='block';
 }
 
+async function syncDonationToGoogleSheet(rec, receiptNo=''){
+  return await syncToGoogleSheet({
+    sheet: 'वर्गणी / देणगी',
+    Type: rec.type || 'Donation',
+    Date: rec.date || '',
+    Name: rec.name || '',
+    Mobile: rec.phone || '',
+    Amount: Number(rec.amount || 0),
+    Payment: rec.method || '',
+    Transaction_ID: rec.txnId || '',
+    Receipt_No: receiptNo || '',
+    Source: 'Borgaon Cha Maharaja',
+    Saved_At: new Date().toISOString()
+  });
+}
+
 async function saveDonation(rec){
   if(editingDonationId){
     await supa(sb.from('donations').update({name:rec.name,phone:rec.phone||null,amount:Number(rec.amount),method:rec.method,txn_id:rec.txnId||null,donation_date:rec.date}).eq('id',editingDonationId), 'वर्गणी update');
     const savedNo = data.donations.find(x=>x.id===editingDonationId)?.receipt_no || await nextReceiptNo(rec.date?.slice(0,4));
+    await syncDonationToGoogleSheet(rec, savedNo);
     const editedId=editingDonationId;
     editingDonationId=null;
     await loadData();
@@ -838,6 +980,9 @@ async function saveDonation(rec){
   } else {
     const receiptNo = await nextReceiptNo(rec.date?.slice(0,4));
     const inserted = await supa(sb.from('donations').insert({name:rec.name,phone:rec.phone||null,amount:Number(rec.amount),method:rec.method,txn_id:rec.txnId||null,donation_date:rec.date,receipt_no:receiptNo}).select().single(), 'वर्गणी save');
+    // Google Sheet sync happens immediately after the Supabase save,
+    // before receipt generation, so a receipt/upload problem cannot block Sheet saving.
+    await syncDonationToGoogleSheet(rec, inserted.receipt_no || receiptNo);
     await loadData();
     await generateCombinedReceipt({...rec, txn_id:rec.txnId, id:inserted.id, receipt_file_path:inserted.receipt_file_path || null}, inserted.receipt_no || receiptNo);
     await uploadCurrentReceipt();
@@ -846,12 +991,12 @@ async function saveDonation(rec){
 
 donationForm.onsubmit=async e=>{
   e.preventDefault();
-  if(!isDonationUnlocked()){ unlockDonationArea(); if(!isDonationUnlocked()) return; }
   const btn=e.target.querySelector('button'); btn.disabled=true;
   try{
     const signature = (document.getElementById('dsignature')?.value || '').trim();
     if(signature) localStorage.setItem('bm_receipt_signature', signature);
-    await saveDonation({name:dname.value.trim(),phone:dphone.value.trim(),amount:damount.value,method:dmethod.value,txnId:dtxn.value.trim(),date:ddate.value,signature:signature});
+    const donationRecord={name:dname.value.trim(),phone:dphone.value.trim(),amount:Number(damount.value),method:dmethod.value,txnId:dtxn.value.trim(),date:ddate.value,signature:signature,type:'Donation'};
+    await saveDonation(donationRecord);
     // After successful save + receipt generation/upload, clear all entry fields.
     e.target.reset();
     dname.value=''; dphone.value=''; damount.value=''; dmethod.value='Cash';
@@ -972,7 +1117,24 @@ expenseForm.onsubmit=async e=>{
   try{
     const file=document.getElementById('expenseBill')?.files?.[0]||null;
     const path=await uploadBill(file);
-    await supa(sb.from('expenses').insert({name:ename.value.trim(),amount:Number(eamount.value),expense_date:edate.value,bill_photo_path:path}), 'खर्च save');
+    const expenseRecord={name:ename.value.trim(),amount:Number(eamount.value),expense_date:edate.value,bill_photo_path:path};
+    await supa(sb.from('expenses').insert({
+      name: expenseRecord.name,
+      amount: expenseRecord.amount,
+      expense_date: expenseRecord.expense_date,
+      bill_photo_path: expenseRecord.bill_photo_path
+    }), 'खर्च save');
+    await syncToGoogleSheet({
+      sheet: '💸 खर्च',
+      Type: 'Expense',
+      Date: expenseRecord.expense_date || '',
+      Particulars: expenseRecord.name || '',
+      Amount: Number(expenseRecord.amount || 0),
+      Payment: document.getElementById('epayment')?.value || 'Cash',
+      Bill_Photo: expenseRecord.bill_photo_path || '',
+      Source: 'Borgaon Cha Maharaja',
+      Saved_At: new Date().toISOString()
+    });
     e.target.reset(); edate.value=today; await loadData(); alert('खर्च online save झाला.');
   }catch(err){}
   finally{btn.disabled=false;}
@@ -1097,20 +1259,20 @@ function updateAccessUI(){
   const admin=isAdminLoggedIn();
   document.body.classList.toggle('members-admin-unlocked', admin);
   updateDashboardLockUI();
-  ['expenseNav','reportsNav'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=admin?'':'none';});
+  ['expenseNav','reportsNav'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
   const membersNav=document.getElementById('membersNav'); if(membersNav) membersNav.style.display='';
   const dashNav=document.getElementById('dashboardNav'); if(dashNav) dashNav.style.display='';
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display=admin?'block':'none');
   const donationContent=document.getElementById('donationLockedContent');
   const donationLock=document.getElementById('donationLockNotice');
   if(donationContent && donationLock){
-    const unlocked=isDonationUnlocked();
-    donationContent.style.display=unlocked?'block':'none';
-    donationLock.style.display=unlocked?'none':'block';
+    const unlocked=true;
+    donationContent.style.display='block';
+    donationLock.style.display='none';
   }
-  const donationEntry=document.getElementById('donationEntryPanel'); if(donationEntry) donationEntry.style.display=isDonationUnlocked()?'block':'none';
-  const receiptPanel=document.getElementById('receiptPanel'); if(receiptPanel) receiptPanel.style.display=(admin && isDonationUnlocked())?'block':'none';
-  const receiptNotice=document.getElementById('receiptAdminNotice'); if(receiptNotice) receiptNotice.style.display=(isDonationUnlocked() && !admin)?'block':'none';
+  const donationEntry=document.getElementById('donationEntryPanel'); if(donationEntry) donationEntry.style.display='block';
+  const receiptPanel=document.getElementById('receiptPanel'); if(receiptPanel) receiptPanel.style.display='block';
+  const receiptNotice=document.getElementById('receiptAdminNotice'); if(receiptNotice) receiptNotice.style.display='none';
   document.querySelectorAll('.admin-col').forEach(el=>el.style.display=admin?'table-cell':'none');
   const gp=document.getElementById('galleryUploadPanel'); if(gp) gp.style.display=admin?'block':'none';
   render();

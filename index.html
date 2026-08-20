@@ -1,3 +1,12 @@
+<!-- FINAL REQUIREMENTS:
+Dashboard = Special Password
+वर्गणी / देणगी = Admin Only -> Google Sheet tab 1
+💸 खर्च नोंद = Admin Only -> Google Sheet tab 2
+📈 जमा-खर्च Report = Admin Only
+मंडळाची एकूण वर्गणी = Admin Only
+Edit/Delete = Admin Only
+Admin Logout clears all special/admin unlocks
+-->
 <!-- ACCESS CONTROL V8:
 1 Dashboard = Special Password
 2 वर्गणी / देणगी = Admin only
@@ -893,6 +902,12 @@ function show(id,btn){
   // 🔐 वर्गणी / देणगी = Admin only.
   if(id==='donation' && !isAdminLoggedIn()){
     alert('💰 वर्गणी / देणगी पाहण्यासाठी Admin Login करा.');
+    activatePage('admin',document.getElementById('adminNav'));
+    return;
+  }
+
+  if((id==='expense' || id==='report') && !isAdminLoggedIn()){
+    alert('ही सुविधा वापरण्यासाठी Admin Login करा.');
     activatePage('admin',document.getElementById('adminNav'));
     return;
   }

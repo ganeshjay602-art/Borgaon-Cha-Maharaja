@@ -1,26 +1,3 @@
-<!-- FINAL GOOGLE SHEET ROUTING:
-Sheet 1 = वर्गणी / देणगी
-Sheet 2 = 💸 खर्च
-Use GoogleAppsScript_FINAL_two_sheets.gs for the Apps Script Web App.
--->
-<!-- FINAL REQUIREMENTS:
-Dashboard = Special Password
-वर्गणी / देणगी = Admin Only -> Google Sheet tab 1
-💸 खर्च नोंद = Admin Only -> Google Sheet tab 2
-📈 जमा-खर्च Report = Admin Only
-मंडळाची एकूण वर्गणी = Admin Only
-Edit/Delete = Admin Only
-Admin Logout clears all special/admin unlocks
--->
-<!-- ACCESS CONTROL V8:
-1 Dashboard = Special Password
-2 वर्गणी / देणगी = Admin only
-3 Admin Login = Edit/Delete controls
-4 मंडळाची एकूण वर्गणी = Admin only
-5 Delete = Admin only
-6 Edit = Admin only
-7 Admin Logout = clears special unlocks
--->
 <!-- Google Sheet structure:
 Sheet 1: वर्गणी / देणगी
 Sheet 2: 💸 खर्च
@@ -859,11 +836,6 @@ function updateDashboardLockUI(){
   if(content) content.style.display=unlocked?'block':'none';
 }
 function unlockDonationArea(){
-  if(!isAdminLoggedIn()){
-    alert('💰 वर्गणी / देणगी साठी Admin Login आवश्यक आहे.');
-    show('admin');
-    return;
-  }
   sessionStorage.setItem('bm_donation_unlocked','1');
   const lock=document.getElementById('donationLockNotice');
   const content=document.getElementById('donationLockedContent');
@@ -897,27 +869,23 @@ function activatePage(id,btn){
   return true;
 }
 function show(id,btn){
-  // 🔐 Dashboard = Special Password only.
-  if(id==='dashboard' && !isDashboardUnlocked()){
-    activatePage('dashboard',btn);
-    updateDashboardLockUI();
-    return;
-  }
-
-  // 🔐 वर्गणी / देणगी = Admin only.
-  if(id==='donation' && !isAdminLoggedIn()){
-    alert('💰 वर्गणी / देणगी पाहण्यासाठी Admin Login करा.');
-    activatePage('admin',document.getElementById('adminNav'));
-    return;
-  }
-
-  if((id==='expense' || id==='report') && !isAdminLoggedIn()){
-    alert('ही सुविधा वापरण्यासाठी Admin Login करा.');
-    activatePage('admin',document.getElementById('adminNav'));
-    return;
-  }
-
   activatePage(id,btn);
+  if(id==='dashboard'){
+    const lock=document.getElementById('dashboardLockNotice');
+    const content=document.getElementById('dashboardLockedContent');
+    if(lock) lock.style.display='none';
+    if(content) content.style.display='block';
+    render();
+    return;
+  }
+  if(id==='donation'){
+    const lock=document.getElementById('donationLockNotice');
+    const content=document.getElementById('donationLockedContent');
+    if(lock) lock.style.display='none';
+    if(content) content.style.display='block';
+    render();
+    return;
+  }
   render();
 }
 function showById(id){ return show(id,document.getElementById(id+'Nav')); }
@@ -999,8 +967,6 @@ async function syncDonationToGoogleSheet(rec, receiptNo=''){
 }
 
 async function saveDonation(rec){
-  if(!isAdminLoggedIn()){ alert('Admin Login आवश्यक आहे.'); show('admin'); return; }
-
   if(editingDonationId){
     await supa(sb.from('donations').update({name:rec.name,phone:rec.phone||null,amount:Number(rec.amount),method:rec.method,txn_id:rec.txnId||null,donation_date:rec.date}).eq('id',editingDonationId), 'वर्गणी update');
     const savedNo = data.donations.find(x=>x.id===editingDonationId)?.receipt_no || await nextReceiptNo(rec.date?.slice(0,4));
@@ -1040,8 +1006,6 @@ donationForm.onsubmit=async e=>{
 };
 
 function editDonation(id){
-  if(!isAdminLoggedIn()){ alert('Admin Login आवश्यक आहे.'); show('admin'); return; }
-
   if(!requireAdmin('वर्गणी नोंद edit')) return;
   const x=data.donations.find(v=>v.id===id); if(!x) return;
   editingDonationId=id; dname.value=x.name; dphone.value=x.phone||''; damount.value=x.amount; dmethod.value=x.method||'Cash'; dtxn.value=x.txn_id||''; dtxn.style.display=dmethod.value==='Online'?'block':'none'; if(document.getElementById('dsignature')) dsignature.value=localStorage.getItem('bm_receipt_signature')||''; ddate.value=x.donation_date||today;
@@ -1321,17 +1285,7 @@ function updateAccessUI(){
   }
 }
 
-function logout(){
-  loginPanel.style.display='block';
-  adminPanel.style.display='none';
-  localStorage.removeItem('bm_admin_logged_in');
-  sessionStorage.removeItem('bm_dashboard_unlocked');
-  sessionStorage.removeItem('bm_donation_unlocked');
-  password.value='';
-  updateDashboardLockUI();
-  lockDonationArea();
-  updateAccessUI();
-}
+function logout(){loginPanel.style.display='block';adminPanel.style.display='none';localStorage.removeItem('bm_admin_logged_in');password.value='';updateAccessUI();}
 loginForm.onsubmit=e=>{e.preventDefault();if(password.value==='02102023'){loginPanel.style.display='none';adminPanel.style.display='block';localStorage.setItem('bm_admin_logged_in','1');updateAccessUI();}else alert('Password चुकीचा आहे.');};
 if(isAdminLoggedIn()){loginPanel.style.display='none';adminPanel.style.display='block';}
 updateAccessUI();

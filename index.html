@@ -1,3 +1,26 @@
+<!-- FINAL GOOGLE SHEET ROUTING:
+Sheet 1 = वर्गणी / देणगी
+Sheet 2 = 💸 खर्च
+Use GoogleAppsScript_FINAL_two_sheets.gs for the Apps Script Web App.
+-->
+<!-- FINAL REQUIREMENTS:
+Dashboard = Special Password
+वर्गणी / देणगी = Admin Only -> Google Sheet tab 1
+💸 खर्च नोंद = Admin Only -> Google Sheet tab 2
+📈 जमा-खर्च Report = Admin Only
+मंडळाची एकूण वर्गणी = Admin Only
+Edit/Delete = Admin Only
+Admin Logout clears all special/admin unlocks
+-->
+<!-- ACCESS CONTROL V8:
+1 Dashboard = Special Password
+2 वर्गणी / देणगी = Admin only
+3 Admin Login = Edit/Delete controls
+4 मंडळाची एकूण वर्गणी = Admin only
+5 Delete = Admin only
+6 Edit = Admin only
+7 Admin Logout = clears special unlocks
+-->
 <!-- Google Sheet structure:
 Sheet 1: वर्गणी / देणगी
 Sheet 2: 💸 खर्च
@@ -836,6 +859,11 @@ function updateDashboardLockUI(){
   if(content) content.style.display=unlocked?'block':'none';
 }
 function unlockDonationArea(){
+  if(!isAdminLoggedIn()){
+    alert('💰 वर्गणी / देणगी साठी Admin Login आवश्यक आहे.');
+    show('admin');
+    return;
+  }
   sessionStorage.setItem('bm_donation_unlocked','1');
   const lock=document.getElementById('donationLockNotice');
   const content=document.getElementById('donationLockedContent');
@@ -869,37 +897,41 @@ function activatePage(id,btn){
   return true;
 }
 function show(id,btn){
+  // 🔐 Dashboard = Special Password only.
+  if(id==='dashboard' && !isDashboardUnlocked()){
+    activatePage('dashboard',btn);
+    updateDashboardLockUI();
+    return;
+  }
+
+  // 🔐 वर्गणी / देणगी = Admin only.
+  if(id==='donation' && !isAdminLoggedIn()){
+    alert('💰 वर्गणी / देणगी पाहण्यासाठी Admin Login करा.');
+    activatePage('admin',document.getElementById('adminNav'));
+    return;
+  }
+
+  // 🔐 खर्च + जमा-खर्च Report = Admin only.
+  if((id==='expense' || id==='reports' || id==='report') && !isAdminLoggedIn()){
+    alert('🔐 ही सुविधा फक्त Admin साठी आहे.');
+    activatePage('admin',document.getElementById('adminNav'));
+    return;
+  }
+
   activatePage(id,btn);
-  if(id==='dashboard'){
-    const lock=document.getElementById('dashboardLockNotice');
-    const content=document.getElementById('dashboardLockedContent');
-    if(lock) lock.style.display='none';
-    if(content) content.style.display='block';
-    render();
-    return;
-  }
-  if(id==='donation'){
-    const lock=document.getElementById('donationLockNotice');
-    const content=document.getElementById('donationLockedContent');
-    if(lock) lock.style.display='none';
-    if(content) content.style.display='block';
-    render();
-    return;
-  }
   render();
 }
 function showById(id){ return show(id,document.getElementById(id+'Nav')); }
-/* V29 navigation safety: every section must render even if remote Supabase/CDN is unavailable. */
+/* Navigation safety: never bypass show() locks when Supabase is unavailable. */
 (function hardenNavigation(){
   document.addEventListener('click', function(e){
     const btn=e.target.closest('nav button[onclick]');
     if(!btn) return;
-    setTimeout(function(){
-      const id=(btn.getAttribute('onclick')||'').match(/show\('([^']+)'/);
-      if(!id) return;
-      const page=document.getElementById(id[1]);
-      if(page && !page.classList.contains('active') && !window.__SUPABASE_READY__) activatePage(id[1],btn);
-    },0);
+    const m=(btn.getAttribute('onclick')||'').match(/show\('([^']+)'/);
+    if(!m) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    show(m[1],btn);
   }, true);
 })();
 
@@ -967,6 +999,8 @@ async function syncDonationToGoogleSheet(rec, receiptNo=''){
 }
 
 async function saveDonation(rec){
+  if(!isAdminLoggedIn()){ alert('Admin Login आवश्यक आहे.'); show('admin'); return; }
+
   if(editingDonationId){
     await supa(sb.from('donations').update({name:rec.name,phone:rec.phone||null,amount:Number(rec.amount),method:rec.method,txn_id:rec.txnId||null,donation_date:rec.date}).eq('id',editingDonationId), 'वर्गणी update');
     const savedNo = data.donations.find(x=>x.id===editingDonationId)?.receipt_no || await nextReceiptNo(rec.date?.slice(0,4));
@@ -1006,6 +1040,8 @@ donationForm.onsubmit=async e=>{
 };
 
 function editDonation(id){
+  if(!isAdminLoggedIn()){ alert('Admin Login आवश्यक आहे.'); show('admin'); return; }
+
   if(!requireAdmin('वर्गणी नोंद edit')) return;
   const x=data.donations.find(v=>v.id===id); if(!x) return;
   editingDonationId=id; dname.value=x.name; dphone.value=x.phone||''; damount.value=x.amount; dmethod.value=x.method||'Cash'; dtxn.value=x.txn_id||''; dtxn.style.display=dmethod.value==='Online'?'block':'none'; if(document.getElementById('dsignature')) dsignature.value=localStorage.getItem('bm_receipt_signature')||''; ddate.value=x.donation_date||today;
@@ -1259,33 +1295,42 @@ function updateAccessUI(){
   const admin=isAdminLoggedIn();
   document.body.classList.toggle('members-admin-unlocked', admin);
   updateDashboardLockUI();
-  ['expenseNav','reportsNav'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
+
+  // 🔐 Admin-only navigation sections remain visible but cannot be opened without Admin.
+  ['expenseNav','reportsNav','donationNav'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='';});
   const membersNav=document.getElementById('membersNav'); if(membersNav) membersNav.style.display='';
   const dashNav=document.getElementById('dashboardNav'); if(dashNav) dashNav.style.display='';
+
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display=admin?'block':'none');
+
   const donationContent=document.getElementById('donationLockedContent');
   const donationLock=document.getElementById('donationLockNotice');
+  const donationUnlocked=admin && isDonationUnlocked();
   if(donationContent && donationLock){
-    const unlocked=true;
-    donationContent.style.display='block';
-    donationLock.style.display='none';
+    donationContent.style.display=donationUnlocked?'block':'none';
+    donationLock.style.display=donationUnlocked?'none':'block';
   }
-  const donationEntry=document.getElementById('donationEntryPanel'); if(donationEntry) donationEntry.style.display='block';
-  const receiptPanel=document.getElementById('receiptPanel'); if(receiptPanel) receiptPanel.style.display='block';
-  const receiptNotice=document.getElementById('receiptAdminNotice'); if(receiptNotice) receiptNotice.style.display='none';
+  const donationEntry=document.getElementById('donationEntryPanel'); if(donationEntry) donationEntry.style.display=donationUnlocked?'block':'none';
+  const receiptPanel=document.getElementById('receiptPanel'); if(receiptPanel) receiptPanel.style.display=donationUnlocked?'block':'none';
+  const receiptNotice=document.getElementById('receiptAdminNotice'); if(receiptNotice) receiptNotice.style.display=donationUnlocked?'none':'block';
   document.querySelectorAll('.admin-col').forEach(el=>el.style.display=admin?'table-cell':'none');
   const gp=document.getElementById('galleryUploadPanel'); if(gp) gp.style.display=admin?'block':'none';
   render();
-  if(!admin){
-    const active=document.querySelector('.page.active');
-    if(!active){
-      const h=document.getElementById('home'); if(h)h.classList.add('active');
-      const n=document.getElementById('homeNav'); if(n)n.classList.add('active');
-    }
-  }
 }
 
-function logout(){loginPanel.style.display='block';adminPanel.style.display='none';localStorage.removeItem('bm_admin_logged_in');password.value='';updateAccessUI();}
+
+function logout(){
+  loginPanel.style.display='block';
+  adminPanel.style.display='none';
+  localStorage.removeItem('bm_admin_logged_in');
+  sessionStorage.removeItem('bm_dashboard_unlocked');
+  sessionStorage.removeItem('bm_donation_unlocked');
+  password.value='';
+  updateDashboardLockUI();
+  lockDonationArea();
+  updateAccessUI();
+  activatePage('home',document.getElementById('homeNav'));
+}
 loginForm.onsubmit=e=>{e.preventDefault();if(password.value==='02102023'){loginPanel.style.display='none';adminPanel.style.display='block';localStorage.setItem('bm_admin_logged_in','1');updateAccessUI();}else alert('Password चुकीचा आहे.');};
 if(isAdminLoggedIn()){loginPanel.style.display='none';adminPanel.style.display='block';}
 updateAccessUI();

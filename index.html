@@ -1,3 +1,4 @@
+<!-- HARD LOCK FINAL: session-only Admin, Special Dashboard lock, Admin-only donation/expense/report. -->
 <!-- FINAL GOOGLE SHEET ROUTING:
 Sheet 1 = वर्गणी / देणगी
 Sheet 2 = 💸 खर्च
@@ -402,12 +403,12 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 </div>
 </section>
 <section id="dashboard" class="page">
-<div id="dashboardLockNotice" class="panel" style="display:none;text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
+<div id="dashboardLockNotice" class="panel" style="display:block;text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
 <h2 style="margin:0 0 8px">🔐 Dashboard</h2>
 <p class="muted">📊 Dashboard आणि Total वर्गणी पाहण्यासाठी Special Password टाका.</p>
 <button class="primary" type="button" onclick="unlockDashboard()">🔑 Special Password ने उघडा</button>
 </div>
-<div id="dashboardLockedContent" style="display:block">
+<div id="dashboardLockedContent" style="display:none">
 <h2>📊 Dashboard</h2>
 <p class="muted">🙏 वर्षनिहाय वर्गणी / खर्च आणि नोंदी</p>
 <div class="panel" style="margin-top:12px">
@@ -438,7 +439,7 @@ body.members-admin-unlocked .member-admin-action{display:inline-block!important}
 </section>
 
 <section id="donation" class="page">
-<div id="donationLockNotice" class="panel" style="display:none;text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
+<div id="donationLockNotice" class="panel" style="display:block;text-align:center;border:2px solid #d4af37;background:linear-gradient(135deg,#fff8e8,#fffdf8);">
 <h2 style="margin:0 0 8px">🔐 वर्गणी / देणगी 🧾 पावती / Receipt</h2>
 <p class="muted">वर्गणी / देणगी नोंद पाहता व जतन करता येईल. Edit / Delete फक्त Admin करू शकतो.</p>
 <button class="primary" type="button" onclick="unlockDonationArea()">🔑 Admin Login ने उघडा</button>
@@ -830,7 +831,7 @@ async function deleteRecord(type,id){
   await loadData();
 }
 
-function isAdminLoggedIn(){ return localStorage.getItem('bm_admin_logged_in') === '1'; }
+function isAdminLoggedIn(){ return sessionStorage.getItem('bm_admin_logged_in') === '1'; }
 function isDonationUnlocked(){ return sessionStorage.getItem('bm_donation_unlocked') === '1'; }
 function isDashboardUnlocked(){ return sessionStorage.getItem('bm_dashboard_unlocked') === '1'; }
 function refreshSignature(){
@@ -1322,7 +1323,7 @@ function updateAccessUI(){
 function logout(){
   loginPanel.style.display='block';
   adminPanel.style.display='none';
-  localStorage.removeItem('bm_admin_logged_in');
+  sessionStorage.removeItem('bm_admin_logged_in');
   sessionStorage.removeItem('bm_dashboard_unlocked');
   sessionStorage.removeItem('bm_donation_unlocked');
   password.value='';
@@ -1331,7 +1332,7 @@ function logout(){
   updateAccessUI();
   activatePage('home',document.getElementById('homeNav'));
 }
-loginForm.onsubmit=e=>{e.preventDefault();if(password.value==='02102023'){loginPanel.style.display='none';adminPanel.style.display='block';localStorage.setItem('bm_admin_logged_in','1');updateAccessUI();}else alert('Password चुकीचा आहे.');};
+loginForm.onsubmit=e=>{e.preventDefault();if(password.value==='02102023'){loginPanel.style.display='none';adminPanel.style.display='block';sessionStorage.setItem('bm_admin_logged_in','1');updateAccessUI();}else alert('Password चुकीचा आहे.');};
 if(isAdminLoggedIn()){loginPanel.style.display='none';adminPanel.style.display='block';}
 updateAccessUI();
 refreshSignature();
@@ -1340,6 +1341,37 @@ refreshSignature();
     if(await openPublicReceiptIfRequested()) return;
     await loadData();
   }catch(e){ alert('Supabase connect झाले नाही. Project URL / Publishable Key तपासा.'); }
+})();
+</script>
+<script>
+(function hardLockInit(){
+  function enforce(){
+    const admin = sessionStorage.getItem('bm_admin_logged_in') === '1';
+    const dash = sessionStorage.getItem('bm_dashboard_unlocked') === '1';
+    const donation = admin && sessionStorage.getItem('bm_donation_unlocked') === '1';
+
+    const dl=document.getElementById('dashboardLockNotice');
+    const dc=document.getElementById('dashboardLockedContent');
+    if(dl) dl.style.display=dash?'none':'block';
+    if(dc) dc.style.display=dash?'block':'none';
+
+    const nl=document.getElementById('donationLockNotice');
+    const nc=document.getElementById('donationLockedContent');
+    if(nl) nl.style.display=donation?'none':'block';
+    if(nc) nc.style.display=donation?'block':'none';
+
+    // If Admin is not logged in, never leave protected pages active.
+    const active=document.querySelector('.page.active');
+    if(!admin && active && ['donation','expense','reports','report'].includes(active.id)){
+      if(typeof activatePage==='function') activatePage('home',document.getElementById('homeNav'));
+    }
+    if(!dash && active && active.id==='dashboard'){
+      if(typeof updateDashboardLockUI==='function') updateDashboardLockUI();
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',enforce);
+  else enforce();
+  window.addEventListener('pageshow',enforce);
 })();
 </script>
 <script>
